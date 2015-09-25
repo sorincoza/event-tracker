@@ -2,7 +2,7 @@
 /**
 * Plugin Name: GA Custom Event Tracker
 * Description: Google Analytics Event Tracking for the following events: click on chat box, subscribe to newsletter.
-* Version: 1.1
+* Version: 1.2
 * Author: Sorin Coza
 * Author URI: http://sorincoza.com
 *
@@ -128,7 +128,7 @@ function event_tracker_send_email(){
 		}
 		.keyval-pair .name{
 			display: inline-block;
-			width: 150px;
+			width: 100px;
 		}
 		.keyval-pair .value{
 			color: red;
@@ -313,24 +313,11 @@ function event_tracker_updater_setup(){
 			'sslverify' => true,
 			'requires' => '4.0',
 			'tested' => '4.3',
-			'readme' => 'README.md',
+			'readme' => 'VERSION.txt',
 			'access_token' => '',
 		);
 
-		new WP_GitHub_Updater( $config );
+		new WP_GitHub_Updater__sorincoza( $config );
 
 	}
-}
-
-
-// just a log function
-if ( !function_exists('__log') ){
-    function __log( $data, $append = true ){
-        $file = __DIR__ . '/logs.txt';
-        if ( $append ){
-            $data .= PHP_EOL . PHP_EOL . '===========================' . PHP_EOL . PHP_EOL . file_get_contents($file);
-        }
-
-        file_put_contents($file, $data);
-    }
 }

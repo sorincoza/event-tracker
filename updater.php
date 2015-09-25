@@ -1,5 +1,9 @@
 <?php
 
+// NOTE: "return" works because the class is included in a function! Don't change that!
+
+
+
 // Prevent loading this file directly and/or if the class is already defined
 if ( ! defined( 'ABSPATH' ) || class_exists( 'WPGitHubUpdater' ) || class_exists( 'WP_GitHub_Updater' ) )
 	return;
@@ -31,7 +35,9 @@ if ( ! defined( 'ABSPATH' ) || class_exists( 'WPGitHubUpdater' ) || class_exists
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
-class WP_GitHub_Updater {
+if ( ! class_exists( 'WP_GitHub_Updater__sorincoza' ) ){
+	
+class WP_GitHub_Updater__sorincoza {
 
 	/**
 	 * Temporary store the data fetched from GitHub, so it only gets loaded once per class instance
@@ -190,15 +196,13 @@ class WP_GitHub_Updater {
 			$raw_response = wp_remote_get( $query, array( 'sslverify' => $this->config['sslverify'] ) );
 			$raw_response = ( is_wp_error($raw_response)  ?  array( 'body' => '' )  :  $raw_response );
 
-			__log($raw_response);
 
 			if ( is_wp_error( $raw_response ) )
 				return $version;
 
-			$version_readme = $raw_response;
+			$version_readme = $raw_response['body'];
 			if ( -1 == version_compare( $version, $version_readme ) )
 				$version = $version_readme;
-
 
 
 			// refresh every 6 hours
@@ -399,4 +403,7 @@ class WP_GitHub_Updater {
 		return $result;
 
 	}
-}
+
+}  // END CLASS
+
+}  // END IF
