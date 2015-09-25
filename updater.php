@@ -190,16 +190,14 @@ class WP_GitHub_Updater {
 			$raw_response = wp_remote_get( $query, array( 'sslverify' => $this->config['sslverify'] ) );
 			$raw_response = ( is_wp_error($raw_response)  ?  array( 'body' => '' )  :  $raw_response );
 
+			__log($raw_response);
+
 			if ( is_wp_error( $raw_response ) )
 				return $version;
 
-			preg_match( '#^\s*`*~Current Version\:\s*([^~]*)~#im', $raw_response['body'], $__version );
-
-			if ( isset( $__version[1] ) ) {
-				$version_readme = $__version[1];
-				if ( -1 == version_compare( $version, $version_readme ) )
-					$version = $version_readme;
-			}
+			$version_readme = $raw_response;
+			if ( -1 == version_compare( $version, $version_readme ) )
+				$version = $version_readme;
 
 
 

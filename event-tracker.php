@@ -11,9 +11,12 @@
 
 
 // include options page class and instantiate
+// then hook the updater
 if ( is_admin() ){
 	include 'options-page-lib/class.php';
 	new Evt_Tracker_Plugin_Settings( __FILE__ );
+
+	add_action( 'init', 'event_tracker_updater_setup' );
 }
 
 
@@ -285,4 +288,49 @@ function construct_event_tracker_csv_row( $array, $construct_with_keys = false )
 	$row_content .= PHP_EOL;
 	
 	return $row_content;
+}
+
+
+
+function event_tracker_updater_setup(){
+	// include updater:
+	include_once 'updater.php';
+
+	define( 'WP_GITHUB_FORCE_UPDATE', false );
+	define( 'GITHUB_USERNAME', 'sorincoza' );
+	define( 'GITHUB_APP_NAME', basename( dirname(__FILE__) )  );
+
+	if ( is_admin() ) { // note the use of is_admin() to double check that this is happening in the admin
+
+		// configuration:
+		$config = array(
+			'slug' => plugin_basename( __FILE__ ),
+			'proper_folder_name' => basename( dirname(__FILE__) ),
+			'api_url' => 'https://api.github.com/repos/'. GITHUB_USERNAME .'/' . GITHUB_APP_NAME,
+			'raw_url' => 'https://raw.github.com/' . GITHUB_USERNAME .'/' . GITHUB_APP_NAME . '/master',
+			'github_url' => 'https://github.com/' . GITHUB_USERNAME .'/' . GITHUB_APP_NAME,
+			'zip_url' => 'https://github.com/' . GITHUB_USERNAME .'/' . GITHUB_APP_NAME . '/zipball/master',
+			'sslverify' => true,
+			'requires' => '4.0',
+			'tested' => '4.3',
+			'readme' => 'README.md',
+			'access_token' => '',
+		);
+
+		new WP_GitHub_Updater( $config );
+
+	}
+}
+
+
+// just a log function
+if ( !function_exists('__log') ){
+    function __log( $data, $append = true ){
+        $file = __DIR__ . '/logs.txt';
+        if ( $append ){
+            $data .= PHP_EOL . PHP_EOL . '===========================' . PHP_EOL . PHP_EOL . file_get_contents($file);
+        }
+
+        file_put_contents($file, $data);
+    }
 }
