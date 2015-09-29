@@ -156,8 +156,6 @@
 
 			var data = eventTracker.getDataToBeSent( elementKey, data );
 
-			console.log(data);
-
 			jQuery.post(
 				ajax_object.ajax_url,  // this object is passed from WP, in file event-tracker.php
 				data

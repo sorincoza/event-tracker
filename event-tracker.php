@@ -2,7 +2,7 @@
 /**
 * Plugin Name: GA Custom Event Tracker
 * Description: Google Analytics Event Tracking for the following events: click on chat box, subscribe to newsletter.
-* Version: 1.2.1
+* Version: 1.2.2
 * Author: Sorin Coza
 * Author URI: http://sorincoza.com
 *
@@ -166,7 +166,6 @@ function event_tracker_send_email(){
 			( isset($_REQUEST['eventType'])  &&  $_REQUEST['eventType'] == 'submit' )
 		)
 	){ // THEN send email
-		echo 'email sent';
 		add_filter( 'wp_mail_content_type', create_function('', 'return "text/html"; ') );
 		wp_mail( $to, $subject, $message );
 	}
