@@ -2,7 +2,7 @@
 /**
 * Plugin Name: GA Custom Event Tracker
 * Description: Google Analytics Event Tracking for the following events: click on chat box, subscribe to newsletter.
-* Version: 1.2
+* Version: 1.2.1
 * Author: Sorin Coza
 * Author URI: http://sorincoza.com
 *
@@ -27,6 +27,7 @@ if ( is_admin() ){
 // then bussiness as usual
 add_action( 'wp_enqueue_scripts', 'event_tracker_scripts' );
 add_action( 'wp_ajax_send_event_email', 'event_tracker_send_email' );
+add_action( 'wp_ajax_nopriv_send_event_email', 'event_tracker_send_email' );
 add_action( 'wp_ajax_save_event_tracking_table_as_csv', 'event_tracker_save_table_as_csv' );
 register_activation_hook( __FILE__, 'event_tracker_install' );
 
@@ -67,7 +68,8 @@ function event_tracker_send_email(){
 
 	// add all other keys:
 	foreach ($_REQUEST as $key => $value) {
-		if ( $key === 'action'  ||  $key === 'query'  ||  $key === '_ca_data'  ||  $key === '_ca_history' ){ continue; }
+		// if ( $key === 'action'  ||  $key === 'query'  ||  $key === '_ca_data'  ||  $key === '_ca_history' ){ continue; }
+		if ( in_array( $key, array( 'action', 'query', '_ca_data', '_ca_history', 'clickCount', 'submitCount' ) ) ){ continue; }
 
 		$message .= '<span id="' . $key . '" class="keyval-pair"><b class="name">' . $key . '</b> :  <span class="value">' . $value . '</span></span><br>';
 
@@ -76,12 +78,17 @@ function event_tracker_send_email(){
 	// add to db values
 	$keys = array( '_ga', 'email', 'page' );
 	foreach ($keys as $key) {
+		if( !isset($_REQUEST[$key]) ){ continue; }
 		$db_values[ $key ] = $_REQUEST[ $key ];
 	}
 
 
 	// add query parameters info:
 	if ( !empty( $_REQUEST['query'] ) ){
+		// add to database values:
+		$db_values['url_query'] = '?' . $_REQUEST['query'];
+
+		// display info in email:
 		$query_pairs = explode( '&', $_REQUEST['query'] );
 		$message .= '<br>' . '<h3 id="url-params-title">The following parameters were found in the URL:</h3>';
 
@@ -98,7 +105,7 @@ function event_tracker_send_email(){
 
 
 	// inform about invalid email:
-	if ( $_REQUEST['isValidEmail'] == 'false' ){
+	if ( isset($_REQUEST['isValidEmail'])  &&  $_REQUEST['isValidEmail'] == 'false' ){
 		$message .= '<h3 id="invalid-email-message">The email appears to be invalid, so probably Spokal ignored this subscription.</h3>';
 	}
 
@@ -141,19 +148,28 @@ function event_tracker_send_email(){
 
 
 	// save to database:
-	$db_values['_ca_history'] = stripslashes( $_REQUEST['_ca_history'] );
+	if ( isset($_REQUEST['_ca_history']) ){
+		$db_values['_ca_history'] = stripslashes( $_REQUEST['_ca_history'] );
+	}
 	event_tracker_save_to_database( $db_values );
 
 
 
 	// send email if email is set up
 	$to = get_option( 'evt_track_email', '' );
-	if ( !empty( $to ) ){
+	if ( 
+		!empty( $to )
+		&&
+		( 
+			( isset($_REQUEST['clickCount'])  &&  isset($_REQUEST['eventType'])  &&  $_REQUEST['clickCount'] == '1'  &&  $_REQUEST['eventType'] == 'click' )
+			||
+			( isset($_REQUEST['eventType'])  &&  $_REQUEST['eventType'] == 'submit' )
+		)
+	){ // THEN send email
+		echo 'email sent';
 		add_filter( 'wp_mail_content_type', create_function('', 'return "text/html"; ') );
 		wp_mail( $to, $subject, $message );
 	}
-
-var_dump($_REQUEST);
 
 	//all done
 	wp_die();
@@ -161,7 +177,7 @@ var_dump($_REQUEST);
 }
 
 function get_event_tracker__ca_data(){
-	return json_decode( stripslashes($_REQUEST['_ca_data']), true );
+	return ( !empty( $_REQUEST['_ca_data'] )  ?  json_decode( stripslashes($_REQUEST['_ca_data']), true )  :  array() );
 }
 
 function get_event_tracker_table_name(){
@@ -180,12 +196,13 @@ function event_tracker_install() {
 		id mediumint(9) NOT NULL AUTO_INCREMENT,
 		_ga varchar(50),
 		email varchar(100),
-		type varchar(50),
 		ip varchar(50),
 		page text,
+		url_query text,
 		submits varchar(20) DEFAULT '0',
 		clicks varchar(20) DEFAULT '0',
 		utm_campaign varchar(100),
+		type varchar(50),
 		utm_content varchar(100),
 		utm_medium varchar(100),
 		utm_source varchar(100),
@@ -200,6 +217,10 @@ function event_tracker_install() {
 	require_once( ABSPATH . 'wp-admin/includes/upgrade.php' );
 	dbDelta( $sql );
 
+	// rearrange columns
+	$wpdb->query( 'ALTER TABLE ' . $table_name . ' MODIFY url_query text AFTER page;' );
+	$wpdb->query( 'ALTER TABLE ' . $table_name . ' MODIFY type varchar(50) AFTER utm_campaign;' );
+
 }
 
 function event_tracker_save_to_database( $key_vals ){
@@ -207,13 +228,15 @@ function event_tracker_save_to_database( $key_vals ){
 
 	// take care of details
 	$key_vals['paidSearch'] = !empty( $key_vals['paidSearch'] )  ?  '1'  :  '0';
-	$key_vals['email'] = trim( $key_vals['email'] );
+	$key_vals['email'] = isset($key_vals['email']) ? trim( $key_vals['email'] ) : '';
 
 	$eventTypeKey = $_REQUEST['eventType'] . 's';
 
-
-	$existing_row = $wpdb->get_row( 'SELECT * FROM ' . get_event_tracker_table_name() .  ' WHERE _ga = "' . $key_vals['_ga'] . '"', ARRAY_A );
-
+	if ( !empty($key_vals['_ga']) ){
+		$existing_row = $wpdb->get_row( 'SELECT * FROM ' . get_event_tracker_table_name() .  ' WHERE _ga = "' . $key_vals['_ga'] . '"', ARRAY_A );
+	}else{
+		$existing_row = null;
+	}
 
 	if (  ( $existing_row === null  &&  !empty($key_vals['_ga'])  )  ||  ( empty($key_vals['_ga']) ) ) {
 

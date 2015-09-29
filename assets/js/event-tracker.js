@@ -19,7 +19,8 @@
 				eventType: 'click',
 				eventLabel: 'Chat Window Click',
 				emailSubject: 'New chat event',
-				emailSent: false 
+				clickCount: 0,
+				submitCount: 0
 			},
 			subscribeForm_Bottom: { 
 				id: 'spokalLeadsScrollBox', 
@@ -28,7 +29,8 @@
 				eventType: 'submit',
 				eventLabel: 'Bottom Form Subscription',
 				emailSubject: 'New subscription event',
-				emailSent: false 
+				clickCount: 0,
+				submitCount: 0 
 			},
 			subscribeForm_Center: { 
 				id: 'sp_popup_form-802', 
@@ -37,7 +39,8 @@
 				eventType: 'submit',
 				eventLabel: 'Popup Form Subscription',
 				emailSubject: 'New subscription event',
-				emailSent: false 
+				clickCount: 0,
+				submitCount: 0
 			}
 		}
 
@@ -139,28 +142,26 @@
 		}
 
 		,sendEmail: function( elementKey, data ){
-			if ( typeof jQuery !== 'function'   ||  eventTracker.elements[ elementKey ].emailSent === true ){ 
+			if ( typeof jQuery !== 'function' ){ 
 				console.warn( 'Email was not sent.' );
 				return; 
+			}
+
+			if ( eventTracker.elements[ elementKey ].eventType === 'click' ){
+				eventTracker.elements[ elementKey ].clickCount += 1;
+			}else if ( eventTracker.elements[ elementKey ].eventType === 'submit'  &&  data.isValidEmail ){
+				eventTracker.elements[ elementKey ].submitCount += 1;
 			}
 
 
 			var data = eventTracker.getDataToBeSent( elementKey, data );
 
+			console.log(data);
+
 			jQuery.post(
 				ajax_object.ajax_url,  // this object is passed from WP, in file event-tracker.php
 				data
 			);
-
-			if ( data.eventType === 'click' ){
-				// we don't want to send email for every click
-				eventTracker.elements[ elementKey ].emailSent = true;
-			}
-			
-			// if the email is invalid, we keep sending emails
-			if ( data.eventType === 'submit'  &&  !data.isValidEmail ){
-				eventTracker.elements[ elementKey ].emailSent = false;
-			}
 
 		}
 
@@ -180,6 +181,8 @@
 			data._ca_history = storageObjs['_ca_history'];
 
 			data.action = 'send_event_email';
+			data.clickCount = eventTracker.elements[ elementKey ].clickCount;
+			data.submitCount = eventTracker.elements[ elementKey ].submitCount;
 
 			return data;
 		}
@@ -190,11 +193,12 @@
 		}
 
 		,getLocalStorageObjects: function(){
-			storage = ( typeof window.localStorage !== 'undefined' ? window.localStorage : false );
-			if ( !storage ){ return false; }
+			var result = { '_ca_data': '', '_ca_history': '' }; // init the result
 
-			var result = {},
-				keys = [ '_ca_data', '_ca_history' ];
+			storage = ( typeof window.localStorage !== 'undefined' ? window.localStorage : false );
+			if ( !storage ){ return result; }
+
+			var keys = [ '_ca_data', '_ca_history' ];
 
 			for ( var i in keys ){
 				if ( typeof storage.getItem !== 'undefined' ){
