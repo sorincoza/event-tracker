@@ -2,7 +2,7 @@
 /**
 * Plugin Name: GA Custom Event Tracker
 * Description: Google Analytics Event Tracking for the following events: click on chat box, subscribe to newsletter.
-* Version: 1.2.2
+* Version: 1.2.3
 * Author: Sorin Coza
 * Author URI: http://sorincoza.com
 *
@@ -68,12 +68,18 @@ function event_tracker_send_email(){
 
 	// add all other keys:
 	foreach ($_REQUEST as $key => $value) {
-		// if ( $key === 'action'  ||  $key === 'query'  ||  $key === '_ca_data'  ||  $key === '_ca_history' ){ continue; }
 		if ( in_array( $key, array( 'action', 'query', '_ca_data', '_ca_history', 'clickCount', 'submitCount' ) ) ){ continue; }
 
 		$message .= '<span id="' . $key . '" class="keyval-pair"><b class="name">' . $key . '</b> :  <span class="value">' . $value . '</span></span><br>';
 
 	}
+
+
+	// inform about invalid email:
+	if ( isset($_REQUEST['isValidEmail'])  &&  $_REQUEST['isValidEmail'] == 'false' ){
+		$message .= '<h4 id="invalid-email-message">The email appears to be invalid, so probably Spokal ignored this subscription.</h4>';
+	}
+
 
 	// add to db values
 	$keys = array( '_ga', 'email', 'page' );
@@ -90,7 +96,7 @@ function event_tracker_send_email(){
 
 		// display info in email:
 		$query_pairs = explode( '&', $_REQUEST['query'] );
-		$message .= '<br>' . '<h3 id="url-params-title">The following parameters were found in the URL:</h3>';
+		$message .= '<br><h3 id="url-params-title">The following parameters were found in the URL:</h3>';
 
 		$message .= '<div id="url-params-values">';
 		foreach ($query_pairs as $pair) {
@@ -100,14 +106,10 @@ function event_tracker_send_email(){
 		$message .= '</div>';
 
 	}else{
-		$message .= '<h3 id="url-params-title">No parameters were found in the URL.</h3>';
+		$message .= '<br><h3 id="url-params-title">No parameters were found in the URL.</h3>';
 	}
 
 
-	// inform about invalid email:
-	if ( isset($_REQUEST['isValidEmail'])  &&  $_REQUEST['isValidEmail'] == 'false' ){
-		$message .= '<h3 id="invalid-email-message">The email appears to be invalid, so probably Spokal ignored this subscription.</h3>';
-	}
 
 	//get the tracking data
 	$tracking_data = get_event_tracker__ca_data();
@@ -116,7 +118,7 @@ function event_tracker_send_email(){
 	$db_values = array_merge( $db_values, $tracking_data );
 
 	// now dump all tracking data:
-	$message .= '<h3 id="ga-data-title">The following Google Analytics tracking data was found in localStorage:</h3>';
+	$message .= '<br><h3 id="ga-data-title">The following Google Analytics tracking data was found in localStorage:</h3>';
 
 	$message .= '<div id="ga-data-values">';
 	foreach ( $tracking_data as $key => $value ) {
@@ -135,7 +137,7 @@ function event_tracker_send_email(){
 		}
 		.keyval-pair .name{
 			display: inline-block;
-			width: 100px;
+			width: 150px;
 		}
 		.keyval-pair .value{
 			color: red;
